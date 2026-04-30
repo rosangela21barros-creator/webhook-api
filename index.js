@@ -3,16 +3,15 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
-const PB_URL = "https://salaofacilnet.com.br";
-
-app.post("/webhook/cakto", async (req, res) => {
+// ROTA PRINCIPAL WEBHOOK CAKTO
+app.post("/webhook/cakto", (req, res) => {
   console.log("🔥 Webhook recebido");
 
-  // ⚠️ responde imediatamente (evita timeout/500 na Cakto)
+  // responde imediatamente (evita erro 500 na Cakto)
   res.status(200).json({ success: true });
 
-  // 🔄 processa em background (qualquer erro não afeta resposta)
-  setImmediate(async () => {
+  // processa depois (não quebra resposta)
+  setTimeout(async () => {
     try {
       const payload = req.body || {};
       const data = payload.data || {};
@@ -27,7 +26,7 @@ app.post("/webhook/cakto", async (req, res) => {
       console.log("💰 Pagamento aprovado:", email);
 
       if (!email) {
-        console.log("❌ Email não encontrado no payload");
+        console.log("❌ Email não encontrado");
         return;
       }
 
@@ -48,36 +47,32 @@ app.post("/webhook/cakto", async (req, res) => {
 
         await fetch(`${PB_URL}/api/collections/users/records/${user.id}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({
             trial_expired: false,
             subscription_active: true,
           }),
         });
 
-        console.log("🚀 Acesso liberado com sucesso!");
-      } catch (pbErr) {
-        console.error("⚠️ Erro ao acessar PocketBase:", pbErr.message);
+        console.log("🚀 Acesso liberado!");
+      } catch (err) {
+        console.log("⚠️ Erro no PocketBase:", err.message);
       }
     } catch (err) {
-      console.error("❌ Erro geral no webhook:", err.message);
+      console.log("❌ Erro geral:", err.message);
     }
-  });
-});
-    console.log("🚀 Acesso liberado com sucesso!");
-
-    res.json({ success: true });
-
-  } catch (err) {
-    console.error("Erro:", err);
-    res.status(500).json({ error: "Erro interno" });
-  }
+  }, 0);
 });
 
+// ROTA TESTE
 app.get("/", (req, res) => {
-  res.send("API rodando 🚀");
+  res.send("Webhook rodando 🚀");
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Servidor rodando...");
+// START SERVER
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("Servidor rodando na porta", PORT);
 });
